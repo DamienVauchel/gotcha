@@ -1,0 +1,23 @@
+{
+  "name": "gotcha",
+  "description": "Git-native knowledge base for coding agents. Investigate a bug against local knowledge first, then write what you learned back into versioned markdown reviewed in PR.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Damien Vauchel",
+    "url": "https://github.com/DamienVauchel"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/inject-index.sh\"",
+            "timeout": 5,
+            "statusMessage": "Loading gotcha index..."
+          }
+        ]
+      }
+    ]
+  }
+}

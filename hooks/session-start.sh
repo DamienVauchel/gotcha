@@ -39,6 +39,11 @@ Mid-task, drop a one-line \`gotcha: <fact>\` comment where you learn something
 instead of stopping to edit docs.
 
 EOF
+behind=$(publish_behind)
+if [ "${behind:-0}" -gt 0 ]; then
+  printf 'Human docs (%s, %s): %s source page(s) changed since the last publish — run /gotcha-publish when convenient.\n\n' \
+    "$(manifest_get publish_target docs)" "$(manifest_get publish_language en)" "$behind"
+fi
 # Hard cap: the index is paid for in every session. /gotcha-tidy keeps it under 60.
 head -n 80 "$GOTCHA_BASE/INDEX.md"
 printf '\n</gotcha-memory>\n'

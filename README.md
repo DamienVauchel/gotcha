@@ -1,7 +1,7 @@
 # gotcha
 
-**The project memory your codebase earned — human-readable docs in git, written
-by the agent, reviewed in PR.**
+**The project memory your codebase earned — written by the agent, reviewed in
+PR, published as docs people actually read.**
 
 Every session, your agent re-derives the same things: where a flow starts, why
 that timeout is not a retry, which partner returns 200 on refusal, what this
@@ -17,10 +17,52 @@ you ask for something
   → does the task
   → writes back what the docs lacked, in the same change set
   → the docs reorganize themselves so reading them stays cheap
+  → the human docs follow: narrative, diagrams, in your language
 ```
 
-Plain markdown in `gotchas/`. Greppable, diffable, readable on GitHub, reviewed
-in a pull request like any other change. No server, no embeddings, no vector store.
+```mermaid
+%%{init: {"theme":"base","fontFamily":"Inter, Helvetica, Arial, sans-serif","themeVariables":{"fontFamily":"Inter, Helvetica, Arial, sans-serif","fontSize":"14px","lineColor":"#6b7280","primaryColor":"#dae8fc","primaryBorderColor":"#6c8ebf","primaryTextColor":"#1f2937","clusterBkg":"#f8fafc","clusterBorder":"#cbd5e1","edgeLabelBackground":"#ffffff"},"flowchart":{"curve":"step","padding":18,"nodeSpacing":45,"rankSpacing":70,"htmlLabels":true}}}%%
+flowchart LR
+  classDef actor fill:#e1d5e7,stroke:#9673a6,stroke-width:1.5px,color:#1f2937
+  classDef service fill:#dae8fc,stroke:#6c8ebf,stroke-width:1.5px,color:#1f2937
+  classDef store fill:#fff2cc,stroke:#d6b656,stroke-width:1.5px,color:#1f2937
+  classDef external fill:#f5f5f5,stroke:#666666,stroke-width:1.5px,stroke-dasharray:5 4,color:#1f2937
+
+  you(["🧑‍💻 You ask for something"]):::actor
+  subgraph claude["🤖 Claude, every task"]
+    recall("<b>1 · Recall</b><br/><small>index → card → TL;DR</small>"):::service
+    code("<b>Code</b><br/><small>only when in doubt</small>"):::service
+    act("<b>2 · Act</b><br/><small>the task itself</small>"):::service
+    wb("<b>3 · Write back</b><br/><small>what the docs lacked</small>"):::service
+  end
+  mem[("<b>gotchas/</b><br/><small>memory · for the agent</small>")]:::store
+  docs[("<b>docs/</b><br/><small>human docs · diagrams</small>")]:::store
+  remote["🌐 Confluence · Notion"]:::external
+
+  you --> recall
+  recall -.->|silent · stale| code
+  recall --> act
+  code --> act
+  act --> wb
+  mem -->|read| recall
+  wb -->|write| mem
+  mem -->|/gotcha-publish| docs
+  mem -.->|or| remote
+```
+
+*The loop: read before acting, go to the code only when in doubt, write back what was missing — and the human docs follow.*
+
+Two layers, one source of truth:
+
+| | `gotchas/` — the memory | `docs/` — the human docs |
+|---|---|---|
+| Written for | the agent: dense cards, grep keywords, ids, freshness stamps | people: explained in order, a diagram wherever it helps |
+| Written by | every task's write-back | `/gotcha-publish`, generated from `gotchas/`, never edited by hand |
+| Language | English — grepped against code and logs | the one you chose at setup |
+| Lives in | the repo | `docs/` by default, or Confluence, Notion, … |
+
+Plain markdown, greppable, diffable, reviewed in a pull request like any other
+change. No server, no embeddings, no vector store.
 
 ## Install
 
@@ -36,13 +78,16 @@ it yourself:
 /gotcha-init
 ```
 
-It surveys the code — one parallel agent per area, so the reading stays out of
-your context — and writes the first version of the docs, every fact cited
-`file:line`, every gap marked rather than guessed. From then on the base grows
-by itself.
+It asks two things — **the language of the human docs** (English by default) and
+**where to publish them** (a `docs/` folder by default, or Confluence, Notion or
+another tool you have a connector for) — then surveys the code, one parallel
+agent per area so the reading stays out of your context. It writes the memory,
+every fact cited `file:line`, every gap marked rather than guessed, and publishes
+the human docs from it. From then on both grow by themselves.
 
-See [`examples/payments-gateway/`](examples/payments-gateway/) for a filled-in
-base — synthetic, but written the way a real one looks after a few months.
+See [`examples/payments-gateway/`](examples/payments-gateway/) for both layers
+filled in — synthetic, but written the way a real base looks after a few months.
+Start with its [human docs](examples/payments-gateway/docs/README.md).
 
 ## What it writes
 
@@ -88,6 +133,36 @@ someone will paste:
 - **Repair** — providers retry; replay what reached the DLQ.
 ```
 
+## Human docs, with diagrams
+
+`/gotcha-publish` turns the memory into docs people want to read: a home page
+with "where to start" by role, an architecture page, one page per module,
+integration, standard and troubleshooting theme — **with a diagram wherever the
+shape of the thing is a graph**. Context maps, component maps, sequence diagrams
+for every flow that crosses three components, lifecycles, and a diagnostic
+decision tree for every troubleshooting theme.
+
+Diagrams are Mermaid, styled like draw.io — its palette, rounded boxes,
+orthogonal edges, one shape per kind of thing — from a house style tuned by
+rendering every rule ([`references/diagrams.md`](references/diagrams.md)).
+They render natively on GitHub, GitLab and Notion, diff line by line in a PR,
+and paste into draw.io if someone wants to retouch one. Every diagram is
+render-checked before it is published.
+
+The human docs stay up to date without anyone writing them twice:
+
+- **Generated, never edited.** Each page lists its sources in a header; publishing
+  never adds a fact that is not in `gotchas/`.
+- **Incremental.** `scripts/publish-check.sh` hashes each source page and rebuilds
+  only the pages whose sources changed — `seen` bumps and re-stamps do not count.
+- **Automatic.** With the default `publish_when: on-change`, the Stop hook asks for
+  a publish at the end of any turn that changed the memory.
+- **Hand edits are caught, not lost.** A correction made directly in `docs/` is
+  detected, ported into `gotchas/`, then republished.
+- **Remote targets** (Confluence, Notion, any document tool with a connector)
+  publish from the default branch after merge, so unreviewed facts never go
+  public. Pages are updated in place; remote ids live in `gotchas/.publish-state`.
+
 ## How the loop runs by itself
 
 Three hooks, no ceremony:
@@ -96,7 +171,7 @@ Three hooks, no ceremony:
 |---|---|
 | `SessionStart` | injects the index and the read → act → write-back loop (also after `/compact`). No base yet ⇒ offers `/gotcha-init`, once per repo |
 | `PostToolUse` | silently records which code and doc files the turn read or edited |
-| `Stop` | the turn edited code, or had to read 6+ code files, and wrote nothing to `gotchas/` ⇒ sends Claude back **once** to apply the capture contract. Nothing durable ⇒ one line, `gotcha: nothing durable`, done |
+| `Stop` | the turn edited code, or had to read 6+ code files, and wrote nothing to `gotchas/` ⇒ sends Claude back **once** to apply the capture contract. Nothing durable ⇒ one line, `gotcha: nothing durable`, done. The turn changed `gotchas/` and the human docs are behind ⇒ asks for an incremental publish |
 
 The Stop gate is what makes the base self-feeding. Without it, write-back is a
 good intention; with it, every turn that learned something is asked what it
@@ -159,17 +234,20 @@ holds the story. But two pieces of time metadata earn their place:
 ## Commands
 
 ```
-/gotcha-init          analyse the code, write the base docs (also migrates a 0.1 base)
+/gotcha-init          ask language + target, analyse the code, write the memory, publish the docs
 /gotcha-recall        cheap lookup protocol — normally triggered on its own
 /gotcha-investigate   bug against the cards first, diagnose, write the card back
 /gotcha-capture       write back what a task taught — normally triggered by the Stop hook
+/gotcha-publish       rebuild the human docs that are behind — docs/, Confluence, Notion, …
 /gotcha-tidy          split / merge / archive / re-sort / re-index per stats.sh flags
 /gotcha-lint          find rot: stale citations, contradictions, uncited claims, markers
 ```
 
 All write paths share one [capture contract](references/capture-contract.md),
-one [page format](references/page-format.md) and one set of
-[organization rules](references/organization.md). Duplicating those per skill
+one [page format](references/page-format.md), one set of
+[organization rules](references/organization.md), one
+[publishing contract](references/publishing.md) and one
+[diagram style](references/diagrams.md). Duplicating those per skill
 would let them drift, which is precisely the failure the base exists to prevent.
 
 ## Design rules

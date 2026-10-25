@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 # Shared helpers for gotcha hooks. POSIX sh; jq is used when present, never required.
 
+GOTCHA_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 GOTCHA_PROJECT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 GOTCHA_BASE="$GOTCHA_PROJECT/gotchas"
 GOTCHA_MANIFEST="$GOTCHA_BASE/manifest.yml"
@@ -31,4 +32,11 @@ state_dir() {
   d="${TMPDIR:-/tmp}/gotcha-$(id -u)/${1:-nosession}"
   mkdir -p "$d" 2>/dev/null
   printf '%s' "$d"
+}
+
+# publish_behind — number of source pages changed since the human docs were
+# last published; empty when publishing is off.
+publish_behind() {
+  [ "$(manifest_get publish_target docs)" = none ] && return 0
+  (cd "$GOTCHA_PROJECT" && sh "$GOTCHA_ROOT/scripts/publish-check.sh" --count 2>/dev/null) || true
 }

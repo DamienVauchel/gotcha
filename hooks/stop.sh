@@ -10,15 +10,33 @@ d=$(state_dir "$(json_get session_id)")
 turn="$d/turn"
 
 finish() { rm -f "$turn"; exit 0; }
+block() {
+  if command -v jq >/dev/null 2>&1; then
+    jq -n --arg r "$1" '{decision: "block", reason: $r}'
+  else
+    printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  fi
+  exit 0
+}
 
 # Already continuing because of this hook: let the turn end.
 printf '%s' "$GOTCHA_INPUT" | grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*true' && finish
 [ -f "$turn" ] || exit 0
 
+# The turn wrote to the base. With on-change publishing, make the human docs follow.
+if grep -q "^edit	base	" "$turn"; then
+  target=$(manifest_get publish_target docs)
+  when=$(manifest_get publish_when on-change)
+  behind=$(publish_behind)
+  if [ "$when" = on-change ] && [ "${behind:-0}" -gt 0 ]; then
+    rm -f "$turn"
+    block "gotcha publish: this turn changed gotchas/ and $behind source page(s) are now ahead of the human docs ($target). Run the gotcha-publish skill for the changed pages only, then report in one line."
+  fi
+  finish
+fi
+
 mode="${GOTCHA_AUTOCAPTURE:-$(manifest_get autocapture auto)}"
 [ "$mode" = off ] && finish
-
-grep -q "^edit	base	" "$turn" && finish
 
 edits=$(grep -c "^edit	code	" "$turn" || true)
 reads=$(grep "^read	code	" "$turn" | cut -f3 | sort -u | wc -l | tr -d ' ')
@@ -39,13 +57,7 @@ else
   act="Write the findings that pass into gotchas/ now, then report them in one line."
 fi
 
-root="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-reason="gotcha write-back: this turn $why and wrote nothing to gotchas/. Apply the gotcha-capture skill to what THIS turn taught you that the docs did not already hold (durability test in $root/references/capture-contract.md). $act If nothing passes, reply with exactly 'gotcha: nothing durable' and stop. Do not restate your previous answer."
+reason="gotcha write-back: this turn $why and wrote nothing to gotchas/. Apply the gotcha-capture skill to what THIS turn taught you that the docs did not already hold (durability test in $GOTCHA_ROOT/references/capture-contract.md). $act If nothing passes, reply with exactly 'gotcha: nothing durable' and stop. Do not restate your previous answer."
 
 rm -f "$turn"
-if command -v jq >/dev/null 2>&1; then
-  jq -n --arg r "$reason" '{decision: "block", reason: $r}'
-else
-  printf '{"decision":"block","reason":"%s"}\n' "$(printf '%s' "$reason" | sed 's/\\/\\\\/g; s/"/\\"/g')"
-fi
-exit 0
+block "$reason"

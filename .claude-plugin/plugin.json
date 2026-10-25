@@ -1,12 +1,18 @@
 {
   "name": "gotcha",
-  "description": "A self-maintaining project memory for coding agents, kept in your repo as human-readable docs. Analyses the code on install, reads the docs before every task, writes back what each task taught, and reorganizes troubleshooting by theme to keep token cost flat.",
-  "version": "0.2.0",
+  "description": "A self-maintaining project memory for coding agents. Analyses the code on install, reads the memory before every task, writes back what each task taught, keeps troubleshooting organized by theme, and publishes human-friendly docs with draw.io-style diagrams to docs/, Confluence or Notion.",
+  "version": "0.3.0",
   "author": {
     "name": "Damien Vauchel",
     "url": "https://github.com/DamienVauchel"
   },
   "repository": "https://github.com/DamienVauchel/gotcha",
   "license": "MIT",
-  "keywords": ["memory", "documentation", "knowledge-base", "troubleshooting", "onboarding"]
+  "keywords": [
+    "memory",
+    "documentation",
+    "knowledge-base",
+    "troubleshooting",
+    "onboarding"
+  ]
 }

@@ -23,7 +23,11 @@ gotchas/
     <theme>.md             a failure map + TS-NNN symptom cards
     _archive.md            cold cards. Not indexed, still greppable
   _template.md             entity skeleton for the next one
+  .publish-state           what the human docs were built from (publish-check.sh)
 ```
+
+This is the **source**, written for the agent. The human docs are generated from
+it by `/gotcha-publish` — see `publishing.md`.
 
 Only `INDEX.md`, `manifest.yml`, `overview.md` and `troubleshooting/INDEX.md` are
 mandatory. Every other page exists only when it has content. An empty page is

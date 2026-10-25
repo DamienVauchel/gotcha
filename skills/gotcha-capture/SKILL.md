@@ -89,7 +89,14 @@ one line per write; yours stays clean.
 Run `scripts/stats.sh`. If a page you touched is flagged `SPLIT`, `INDEX>60`,
 `NO_TLDR` or `UNINDEXED`, apply `/gotcha-tidy` to that page only.
 
-Report in one line: `gotcha: <n> facts → <pages>` (plus markers removed).
+## Phase 6 — Keep the human docs in step
+
+`manifest.yml` `publish_when: on-change` (the default for the `docs` target) ⇒
+run `/gotcha-publish` for the pages you changed. `manual` ⇒ skip; the
+session-start hook will mention the pages behind.
+
+Report in one line: `gotcha: <n> facts → <pages>` (plus markers removed, plus
+`published: <n> pages` if any).
 
 ## Rules
 

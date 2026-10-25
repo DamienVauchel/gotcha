@@ -1,6 +1,6 @@
 ---
 name: gotcha-init
-description: Build this repository's project memory — analyse the codebase (in parallel, one surveyor per area), then write the base docs in gotchas/ (overview, modules, conventions, glossary, decisions, entities, troubleshooting themes) pre-filled with what the code proves. Use right after installing gotcha, when the session-start hook says there is no base, when the user asks to set up / initialize / bootstrap gotcha or the project docs, or to migrate a gotcha 0.1 base (failure-modes.md).
+description: Build this repository's project memory — ask the human-docs language and publication target (docs/ folder by default, or Confluence, Notion, …), analyse the codebase in parallel, write the base in gotchas/ pre-filled with what the code proves, then publish the human-friendly docs with diagrams. Use right after installing gotcha, when the session-start hook says there is no base, when the user asks to set up / initialize / bootstrap gotcha or the project docs, or to migrate a gotcha 0.1 base (failure-modes.md).
 argument-hint: "[subsystem or directory to scope the base to — defaults to the repo]"
 ---
 
@@ -49,17 +49,31 @@ Derive:
 - **Entities** — the recurring per-instance thing worth its own page
   (partners, providers, tenants, plugins). Usually an enum, a registry, a config
   map or a directory of sibling adapters. No such axis ⇒ no entity pages.
-- **Language** — the language of the existing docs and commit messages; ask if
-  unclear. The base is written in it.
+- **Existing doc tooling** — a `docs/` folder (and whether it is a MkDocs /
+  Docusaurus site), links to Confluence or Notion in the README. They inform the
+  defaults proposed in Phase 2.
 
 A large monorepo gets **one base per bounded context** (`apps/billing/gotchas/`),
 not one global base. Ask which one if ambiguous.
 
-## Phase 2 — Confirm the plan
+## Phase 2 — Setup questions
 
-Show the user, in one compact table: areas, scopes → seed themes, entities,
-language, `autocapture` mode (default `auto`). Get confirmation. This is the only
-question in the whole init — make it count.
+Ask everything in **one** round (use the question tool if available, with the
+default first and marked recommended):
+
+1. **Language of the human docs** — `en` by default. Propose the language of the
+   existing docs or commit messages if it differs.
+2. **Where to publish them** — `docs/ folder in the repo` (default) ·
+   `Confluence` · `Notion` · `another tool` (name it). For a remote target, also
+   ask the location (space / parent page URL) and check that a matching
+   connector is available in this session; if not, say how to add it and keep
+   `docs` until it is.
+3. **The plan** — one compact table: areas, scopes → seed themes, entities,
+   `autocapture` mode (default `auto`). Confirm or adjust.
+
+These are the only questions in the whole init — make them count. The source
+base in `gotchas/` stays in English unless the user asks otherwise: it is grepped
+against code and log strings.
 
 ## Phase 3 — Survey in parallel
 
@@ -77,7 +91,7 @@ run / test / build / deploy (verify each one exists), and the glossary.
 
 | File | From | Fill with |
 |---|---|---|
-| `gotchas/manifest.yml` | `templates/manifest.yml` | Phase 1–2. Every path real; `evidence:` commands only if verified |
+| `gotchas/manifest.yml` | `templates/manifest.yml` | Phase 1–2, including the `publish_*` answers (`publish_when: manual` for a remote target). Every path real; `evidence:` commands only if verified |
 | `gotchas/overview.md` | `templates/overview.md` | purpose, stack, map of areas (mermaid if it helps), how to run / test / ship |
 | `gotchas/modules/<area>.md` | `templates/module.md` | surveyor report: role, entry points, flows, invariants, where to change X |
 | `gotchas/conventions.md` | `templates/conventions.md` | only rules that are **not** enforced by a linter and **not** obvious |
@@ -107,7 +121,13 @@ card poisons the base with a confident guess.
 Stamp every page `verified <today> @ <git rev-parse --short HEAD>`. Write every
 TL;DR last, once the page body exists.
 
-## Phase 5 — Wire it up and check
+## Phase 5 — First publication
+
+Run `/gotcha-publish --all`: the human docs, with their diagrams, in the chosen
+language and place. This is the part most people will actually look at — check
+the main diagrams render and read well (`references/diagrams.md`).
+
+## Phase 6 — Wire it up and check
 
 1. Add to the repo's agent instruction file (`CLAUDE.md`, or `AGENTS.md`), two
    lines at most: the project memory is in `gotchas/` (start from
@@ -115,10 +135,11 @@ TL;DR last, once the page body exists.
    `gotcha: <fact>` comment when the code teaches something mid-task.
 2. Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/stats.sh gotchas` and fix every flag.
    `INDEX.md` over 60 lines on day one means the pages are too fine-grained.
-3. Report: pages created, areas covered, what is deliberately empty, and the
-   `_Unknown_` count — the to-do list the first weeks of work will close. Say
-   that the base will grow on its own from now on: every task reads it first and
-   writes back what it lacked.
+3. Report: source pages created, human pages published (and where), areas
+   covered, what is deliberately empty, and the `_Unknown_` count — the to-do
+   list the first weeks of work will close. Say that both will now grow on their
+   own: every task reads the base first, writes back what it lacked, and the
+   human docs follow.
 
 ## Rules
 

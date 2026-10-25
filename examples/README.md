@@ -10,7 +10,15 @@ write-backs would produce it on a real repo.
 It exists because "capture durable findings" is useless advice until you see
 what a good entry looks like. Read it for the shape, not the content.
 
-What to look at, in order:
+It has both layers:
+
+- **`docs/`** — the human docs, as `/gotcha-publish` generates them: narrative
+  pages with diagrams. **Start here:** [`docs/README.md`](payments-gateway/docs/README.md),
+  then the [architecture](payments-gateway/docs/architecture.md) and a
+  [troubleshooting tree](payments-gateway/docs/troubleshooting/webhooks.md).
+- **`gotchas/`** — the memory they are generated from, written for the agent.
+
+What to look at in `gotchas/`, in order:
 
 | File | Shows |
 |---|---|
@@ -29,6 +37,8 @@ Run the scripts against it to see what the skills see:
 cd examples/payments-gateway
 sh ../../scripts/stats.sh gotchas     # sizes, cards, flags, next ids
 sh ../../scripts/stale.sh             # every citation reports `missing` — the code is fictional
+sh ../../scripts/publish-check.sh     # `fresh`: docs/ matches gotchas/
+sh ../../scripts/render-diagrams.sh docs/*.md docs/*/*.md   # every diagram renders
 ```
 
 Three things to notice, because they are the rules people break first:

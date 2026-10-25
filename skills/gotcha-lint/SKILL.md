@@ -53,6 +53,13 @@ Markers piling up mean the loop is not running. List them, offer `/gotcha-captur
 **9. Index truth** — index lines whose hook no longer matches the page (a
 quick TL;DR read each). `stats.sh` already covers orphans and missing pages.
 
+**10. Human docs** — `sh ${CLAUDE_PLUGIN_ROOT}/scripts/publish-check.sh`.
+`edited` outputs are corrections made by hand in the generated docs: each one
+is either a fact to port into `gotchas/` (then republish) or a mistake to
+revert — never let the next publish erase it unseen. `changed` / `new` ⇒ offer
+`/gotcha-publish`. Run `scripts/render-diagrams.sh` on the generated pages: a
+diagram that no longer renders is a broken page.
+
 ## Report
 
 Group by check, most severe first: stale citations, contradictions, then the

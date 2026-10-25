@@ -3,8 +3,23 @@
 
 subject: <module or bounded context this base covers, e.g. src/payments>
 
-# Language the pages are written in (headings included). Identifiers stay verbatim.
+# Language of the source base in gotchas/ — read by the agent, grepped against
+# code and logs. English unless the team insists.
 language: en
+
+# Human-friendly docs, generated from gotchas/ by /gotcha-publish
+# (references/publishing.md). Asked once by /gotcha-init.
+#   publish_target:   docs | confluence | notion | other:<tool> | none
+#   publish_language: language of the human docs (en, fr, de, es, …)
+#   publish_dir:      output folder when the target is docs
+#   publish_location: Confluence space + parent page URL, Notion parent page URL, …
+#   publish_when:     on-change (rebuild at the end of any turn that changed
+#                     gotchas/) | manual (/gotcha-publish, e.g. after merge)
+publish_target: docs
+publish_language: en
+publish_dir: docs
+publish_location:
+publish_when: on-change
 
 # Write-back behaviour (references/capture-contract.md § Modes):
 #   auto    — write findings directly; the PR is the review   (default)

@@ -3,12 +3,20 @@
 
 subject: src/payments
 
+language: en
+autocapture: auto
+nudge_min_edits: 1
+nudge_min_reads: 6
+
 scopes:
   - charge          # outbound card charge: intent, confirm, capture
   - refund          # full and partial refunds, disputes
   - webhook         # inbound provider events
   - reconciliation  # nightly settlement match against provider reports
   - sca             # 3-D Secure / PSD2 challenge flow
+
+areas:
+  - charge: src/payments/charge
 
 entities:
   kind: provider
@@ -18,10 +26,16 @@ entities:
     - adyen
 
 routing:
+  module: gotchas/modules/{area}.md
+  overview: gotchas/overview.md
+  convention: gotchas/conventions.md
+  term: gotchas/glossary.md
+  decision: gotchas/decisions.md
   entity_specific: gotchas/entities/{entity}.md
-  cross_cutting: gotchas/failure-modes.md
+  troubleshooting: gotchas/troubleshooting/{theme}.md
   standard: gotchas/standards/{name}.md
   index: gotchas/INDEX.md
+  troubleshooting_index: gotchas/troubleshooting/INDEX.md
   entity_template: gotchas/_template.md
 
 evidence:

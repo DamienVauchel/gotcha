@@ -1,6 +1,10 @@
 # PSD2 / Strong Customer Authentication
 
-> Synthetic example. The cited paths do not exist — only the shape is real.
+> **TL;DR** — a charge has three outcomes, not two: `requires_action` means
+> "challenge the customer". A soft decline is a retry-with-3DS, not a failure.
+> Exemption counters are held by the issuer, so a refused exemption is normal.
+>
+> <sub>verified 2026-09-14 @ 3f9c2ab · synthetic example — the cited paths do not exist</sub>
 
 Scope of this page: the parts of SCA that change how our code behaves. Not a
 summary of the directive — read the regulation for that.
@@ -19,7 +23,7 @@ An issuer that wants authentication returns a decline whose code means "retry
 this with 3DS", not "no". Our `SOFT_DECLINE_CODES` list
 (`src/payments/providers/codes.ts:8`) captures those, and `ChargeService` routes
 them into the challenge flow rather than to the customer as a failure
-(`ChargeService.ts:96`).
+(`src/payments/charge/ChargeService.ts:96`).
 
 Getting this wrong is expensive and invisible: every soft decline treated as a
 hard one is a lost sale that shows up in no error dashboard, only in conversion.
@@ -28,8 +32,8 @@ hard one is a lost sale that shows up in no error dashboard, only in conversion.
 
 | Exemption | Claimed when | Where |
 |---|---|---|
-| Low value (< €30) | amount below threshold, counter permitting | `sca/exemptions.ts:21` |
-| Recurring / MIT | subsequent charge of a stored mandate | `sca/exemptions.ts:34` |
+| Low value (< €30) | amount below threshold, counter permitting | `src/payments/sca/exemptions.ts:21` |
+| Recurring / MIT | subsequent charge of a stored mandate | `src/payments/sca/exemptions.ts:34` |
 | TRA | not claimed | — |
 
 Two limits on the low-value exemption that the code must respect: it is capped
@@ -54,5 +58,4 @@ a technical one.
 
 A challenge is a **human-latency** step: the customer switches to a banking app,
 possibly on another device. Minutes, not seconds. The session TTL must exceed
-the challenge lifetime — the mismatch is the "customer completes 3DS, returns to
-an expired session" row in `failure-modes.md`.
+the challenge lifetime — the mismatch is card TS-012.

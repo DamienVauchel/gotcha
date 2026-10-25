@@ -1,5 +1,10 @@
 # <Entity name>
 
+> **TL;DR** — what makes this provider different from its siblings: the quirk
+> that bites first.
+>
+> <sub>verified <YYYY-MM-DD> @ <sha></sub>
+
 > One file per entity (partner, provider, tenant, plugin). Every statement must
 > be backed by code — cite `file:line`. Mark gaps
 > `_Unknown — not confirmed in code_` rather than guessing.

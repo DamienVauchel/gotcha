@@ -1,77 +1,131 @@
 ---
 name: gotcha-init
-description: Bootstrap an gotcha knowledge base in this repository — scan the code to propose scopes and entities, then scaffold gotchas/ (manifest, index, failure-modes page, entity pages) pre-filled with what the code already proves. Use when the user asks to set up gotcha, initialize a knowledge base, or when /gotcha-investigate reports no manifest.
-argument-hint: "[subsystem or directory to scope the knowledge base to]"
+description: Build this repository's project memory — analyse the codebase (in parallel, one surveyor per area), then write the base docs in gotchas/ (overview, modules, conventions, glossary, decisions, entities, troubleshooting themes) pre-filled with what the code proves. Use right after installing gotcha, when the session-start hook says there is no base, when the user asks to set up / initialize / bootstrap gotcha or the project docs, or to migrate a gotcha 0.1 base (failure-modes.md).
+argument-hint: "[subsystem or directory to scope the base to — defaults to the repo]"
 ---
 
 # gotcha-init
 
-Create the knowledge base. Nobody hand-writes 600 lines of failure modes, so
-this pre-fills from the code and leaves explicit gaps rather than prose.
+Write the first version of the project memory from the code. Nobody hand-writes
+a base, so this one is generated — and it must be **trustworthy from day one**:
+everything cited, gaps marked, nothing invented.
 
-## Phase 1 — Scope the base
+Read first, they are the authority on shape and rules:
 
-1. Determine the subject: the argument if given, else the repo root. A large
-   monorepo gets **one base per bounded context / module**, not one global base
-   (`src/Connect/_docs/`, `src/Billing/_docs/`, …). Ask which one if ambiguous.
-2. Detect **scopes** — the axes a bug gets classified along. Derive them from
-   the code, not from imagination: top-level directories under the subject,
-   distinct integration protocols, distinct entry-point families (HTTP
-   controllers, queue consumers, CLI commands, cron), external partners.
-3. Detect **entities** — the recurring per-instance thing worth its own page:
-   partners, integrations, providers, tenants, plugins. Usually an enum, a
-   registry, a config map, or a directory of sibling adapters. No such axis in
-   this repo means no entity pages — say so and skip them.
-4. Show scopes + entities to the user and get confirmation before writing.
+- `${CLAUDE_PLUGIN_ROOT}/references/page-format.md`
+- `${CLAUDE_PLUGIN_ROOT}/references/capture-contract.md` (durability test, writing rules)
+- `${CLAUDE_PLUGIN_ROOT}/references/organization.md` (size caps)
 
-## Phase 2 — Write the manifest
+Templates live in `${CLAUDE_PLUGIN_ROOT}/templates/`.
 
-Copy `templates/manifest.yml` to `gotchas/manifest.yml` and fill it from what
-Phase 1 found. Every path in it must be real. Only fill `evidence:` commands
-you actually verified exist (a `docker exec` line, a log query, a test runner) —
-a wrong repro command is worse than a missing one.
+## Phase 0 — What is already there
 
-## Phase 3 — Scaffold the pages
+- `gotchas/manifest.yml` exists ⇒ this is a re-run. Ask: **refresh** (re-survey
+  and fill gaps, never overwrite a human-written fact) or **stop**.
+- `gotchas/failure-modes.md` exists ⇒ a gotcha 0.1 base. Migrate: each scope
+  section becomes `troubleshooting/<scope>.md` (tables → **Map**, symptom rows →
+  `TS-NNN` cards with `seen 1`), then survey for the new page kinds.
+- Existing docs (`README`, `docs/`, ADRs, `CONTRIBUTING`, `CLAUDE.md`) are
+  **inputs**: link to them, extract the non-obvious facts, do not copy them.
 
-| File | From | Pre-fill with |
+## Phase 1 — Cheap reconnaissance (main context, ~10 tool calls)
+
+Read only what describes the repo, not the code itself:
+
+1. The tree, two levels deep, ignoring vendored and generated dirs.
+2. Package / build manifests (`package.json`, `pyproject.toml`, `go.mod`,
+   `composer.json`, `Cargo.toml`, `pom.xml`, …), `Makefile`, `docker-compose*`,
+   CI config. They give the stack, the commands, the services.
+3. `README` and the docs index.
+4. `git log --oneline -n 300 --name-only | …` to see which areas churn — the
+   hot areas deserve the deepest survey.
+
+Derive:
+
+- **Areas** — the 3–12 units a newcomer must understand: bounded contexts,
+  top-level modules, apps in a monorepo. Not one per directory.
+- **Scopes** — the axes a bug gets classified along: entry-point families
+  (HTTP, queue consumers, CLI, cron), integration protocols, partners.
+- **Entities** — the recurring per-instance thing worth its own page
+  (partners, providers, tenants, plugins). Usually an enum, a registry, a config
+  map or a directory of sibling adapters. No such axis ⇒ no entity pages.
+- **Language** — the language of the existing docs and commit messages; ask if
+  unclear. The base is written in it.
+
+A large monorepo gets **one base per bounded context** (`apps/billing/gotchas/`),
+not one global base. Ask which one if ambiguous.
+
+## Phase 2 — Confirm the plan
+
+Show the user, in one compact table: areas, scopes → seed themes, entities,
+language, `autocapture` mode (default `auto`). Get confirmation. This is the only
+question in the whole init — make it count.
+
+## Phase 3 — Survey in parallel
+
+Spawn one `gotcha-surveyor` agent per area, **in the same message** so they run
+in parallel. Give each: the area path, the scopes it touches, the language, and
+the plugin root. Each returns a structured findings report and keeps the code
+reading out of your context. Small repo (≤ 3 areas, a few thousand lines) ⇒
+survey inline instead; the agents are a token budget tool, not a ritual.
+
+While they run, survey the cross-cutting parts yourself: conventions (lint
+config, formatter, test layout, error-handling style, naming), the commands to
+run / test / build / deploy (verify each one exists), and the glossary.
+
+## Phase 4 — Write the base
+
+| File | From | Fill with |
 |---|---|---|
-| `gotchas/INDEX.md` | `templates/INDEX.md` | one line per page, grouped by scope |
-| `gotchas/failure-modes.md` | `templates/failure-modes.md` | one section per scope |
+| `gotchas/manifest.yml` | `templates/manifest.yml` | Phase 1–2. Every path real; `evidence:` commands only if verified |
+| `gotchas/overview.md` | `templates/overview.md` | purpose, stack, map of areas (mermaid if it helps), how to run / test / ship |
+| `gotchas/modules/<area>.md` | `templates/module.md` | surveyor report: role, entry points, flows, invariants, where to change X |
+| `gotchas/conventions.md` | `templates/conventions.md` | only rules that are **not** enforced by a linter and **not** obvious |
+| `gotchas/glossary.md` | `templates/glossary.md` | domain terms whose code name differs |
+| `gotchas/decisions.md` | `templates/decisions.md` | `D-NNN` cards for trade-offs the code or its comments state ("deliberately", "on purpose", "we don't X because", `HACK`, `workaround`) |
 | `gotchas/entities/<name>.md` | `templates/entity.md` | one per confirmed entity |
-| `gotchas/_template.md` | `templates/entity.md` | verbatim, for future entities |
+| `gotchas/troubleshooting/<theme>.md` | `templates/theme.md` | **Map** from the code; **Cards** section empty |
+| `gotchas/troubleshooting/INDEX.md` | `templates/troubleshooting-INDEX.md` | one row per theme, keywords from the Map |
+| `gotchas/INDEX.md` | `templates/INDEX.md` | one hook line per page |
+| `gotchas/_template.md` | `templates/entity.md` | verbatim, if there are entities |
 
-Pre-fill `failure-modes.md` per scope from **evidence in the code**:
+Pre-fill each troubleshooting **Map** from evidence in the code:
 
-- **Exception table** — every custom exception class in the scope: name, path,
-  and the condition at its throw site. Read the throw site; do not infer the
-  meaning from the class name.
-- **Silent-failure traps** — every `catch` that swallows (logs and continues,
-  returns null/empty, `return;`) and every early `return` that drops work.
-  These are the highest-value entries in the whole base: they are invisible in
-  logs and cost hours per incident.
-- **Entry points** — controllers, consumers, CLI commands, scheduled jobs, with
-  their route/queue/command name.
+- **Exceptions** — every custom exception in the scope: name, path, and the
+  condition at its throw site. Read the throw site; never infer meaning from the
+  class name.
+- **Swallowed errors and dropped work** — every `catch` that logs and continues,
+  returns null / empty, and every early `return` that drops work. The highest-value
+  entries in the base: invisible in logs, hours per incident.
+- **Log patterns** — the messages an on-call person will search for.
 - **Repair handles** — commands and endpoints that fix state (backfill, replay,
-  retry, reindex, fix-*).
+  retry, reindex, fix-*), and whether they are safe to re-run.
 
-Leave the symptom → cause → check tables **empty with their header row**. They
-fill up from real incidents via `/gotcha-investigate`; inventing rows poisons the
-base with unverified guesses.
+Leave the **Cards** sections empty. Cards come from real incidents; an invented
+card poisons the base with a confident guess.
 
-## Phase 4 — Wire it up
+Stamp every page `verified <today> @ <git rev-parse --short HEAD>`. Write every
+TL;DR last, once the page body exists.
 
-1. Add to the repo's agent instruction file (`CLAUDE.md`, `AGENTS.md`) a short
-   pointer, two lines at most: read `gotchas/INDEX.md` before investigating;
-   drop a `// gotcha: <fact>` marker when the code teaches you something, and run
-   `/gotcha-capture` to route them. The SessionStart hook handles the rest.
-2. Report: files created, scopes covered, and what is deliberately empty.
+## Phase 5 — Wire it up and check
+
+1. Add to the repo's agent instruction file (`CLAUDE.md`, or `AGENTS.md`), two
+   lines at most: the project memory is in `gotchas/` (start from
+   `gotchas/INDEX.md`); keep it up to date in the same change set, and drop a
+   `gotcha: <fact>` comment when the code teaches something mid-task.
+2. Run `sh ${CLAUDE_PLUGIN_ROOT}/scripts/stats.sh gotchas` and fix every flag.
+   `INDEX.md` over 60 lines on day one means the pages are too fine-grained.
+3. Report: pages created, areas covered, what is deliberately empty, and the
+   `_Unknown_` count — the to-do list the first weeks of work will close. Say
+   that the base will grow on its own from now on: every task reads it first and
+   writes back what it lacked.
 
 ## Rules
 
-- Every statement in a generated page cites `path/to/file.ext:line`. A fact
-  without a citation cannot be lint-checked later, so it does not go in.
+- Every fact cites repo-relative `path/to/file.ext:line`. No citation, no entry.
 - Mark every gap `_Unknown — not confirmed in code_`. Never guess partner
   behaviour, remote semantics, or intent.
-- Do not restate what the code says plainly. The base holds what is **not**
-  obvious from reading the code once: swallowed errors, remote quirks,
-  deliberate trade-offs, diagnostic handles.
+- Do not restate what the code says plainly. A module page that lists every
+  class is a worse `ls`. Write what a newcomer could not get from one read: the
+  flow across files, the invariant, the trap, the reason.
+- Prefer fewer, fuller pages. Seven solid pages beat thirty stubs.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "gotcha",
-  "description": "The gotchas your codebase earned — in git, reviewed in PR, shared by the team.",
+  "description": "The project memory your codebase earned — human-readable docs in git, written by the agent, reviewed in PR.",
   "owner": {
     "name": "Damien Vauchel",
     "url": "https://github.com/DamienVauchel"
@@ -9,9 +9,10 @@
   "plugins": [
     {
       "name": "gotcha",
-      "description": "Local knowledge base first, mandatory write-back after. Retrospective counterpart to spec-driven tools.",
+      "description": "Reads the project docs before every task, writes back what the task taught, keeps troubleshooting organized by theme.",
       "source": "./",
-      "category": "productivity"
+      "category": "productivity",
+      "version": "0.2.0"
     }
   ]
 }

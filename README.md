@@ -1,25 +1,26 @@
 # gotcha
 
-**The gotchas your codebase earned — in git, reviewed in PR, shared by the team.**
+**The project memory your codebase earned — human-readable docs in git, written
+by the agent, reviewed in PR.**
 
-Every codebase has facts that cost someone an afternoon and live nowhere: the
-exception that gets swallowed, the partner that returns 200 on refusal, the
-timeout that was chosen over a retry for a reason nobody wrote down. Agents
-re-derive them every session. So do new hires.
+Every session, your agent re-derives the same things: where a flow starts, why
+that timeout is not a retry, which partner returns 200 on refusal, what this
+error actually means. So does every new hire. The knowledge exists — it is just
+spread across code, heads, and closed tickets.
 
-gotcha puts them in your repo as markdown: read before the work starts, written
-back when it ends. Greppable, diffable, reviewed in a pull request like any other
-change. No server, no embeddings, no vector store.
-
-The point is not that your agent remembers. It is that **your team** remembers,
-and that a human approved every fact before it became doctrine.
+gotcha gives the repo a memory that maintains itself:
 
 ```
-/gotcha-init          scaffold the base from the code
-/gotcha-investigate   local knowledge first, diagnose, write back
-/gotcha-capture       harvest what building it taught you
-/gotcha-lint          find the rot before you stop trusting the base
+you ask for something
+  → Claude reads the docs first (index injected, grep-first, TL;DR before body)
+  → goes to the code only when the docs are silent, stale, or about to be relied on
+  → does the task
+  → writes back what the docs lacked, in the same change set
+  → the docs reorganize themselves so reading them stays cheap
 ```
+
+Plain markdown in `gotchas/`. Greppable, diffable, readable on GitHub, reviewed
+in a pull request like any other change. No server, no embeddings, no vector store.
 
 ## Install
 
@@ -28,128 +29,205 @@ and that a human approved every fact before it became doctrine.
 /plugin install gotcha
 ```
 
-Then, in your repo:
+On the next session in a repo with no base, gotcha offers to build one. Or run
+it yourself:
 
 ```
 /gotcha-init
 ```
 
+It surveys the code — one parallel agent per area, so the reading stays out of
+your context — and writes the first version of the docs, every fact cited
+`file:line`, every gap marked rather than guessed. From then on the base grows
+by itself.
+
 See [`examples/payments-gateway/`](examples/payments-gateway/) for a filled-in
-base — synthetic, but written the way a real one looks after a few incidents.
+base — synthetic, but written the way a real one looks after a few months.
 
-## How it works
-
-`/gotcha-init` scans the subject you point it at and generates `gotchas/`:
+## What it writes
 
 ```
 gotchas/
-  manifest.yml        the only repo-specific file — scopes, paths, routing, repro commands
-  INDEX.md            one line per page; injected into every session by a hook
-  failure-modes.md    exceptions, silent-failure traps, log patterns, repair handles, per scope
-  entities/<name>.md  one page per partner / provider / tenant / plugin
+  INDEX.md                 the router — one hook line per page, injected every session (≤ 60 lines)
+  manifest.yml             the only repo-specific config: areas, scopes, routing, evidence, mode
+  overview.md              what this is, the map, how to run / test / ship
+  conventions.md           the rules a reviewer rejects you for that no linter enforces
+  glossary.md              what people say → what the code calls it
+  decisions.md             deliberate trade-offs: decision, why, what was rejected, when to revisit
+  modules/<area>.md        how an area works: flows across files, invariants, where to change X
+  entities/<name>.md       one partner / provider / tenant / plugin each, quirks first
+  standards/<name>.md      the part of an external spec that actually bites here
+  troubleshooting/
+    INDEX.md               theme router: literal error strings, card count, last seen
+    <theme>.md             failure map (exceptions, swallowed errors, logs, repair handles) + symptom cards
+    _archive.md            cold cards — not indexed, still greppable
 ```
 
-It pre-fills what the code proves — every custom exception with its throw
-condition, every `catch` that swallows, every entry point, every repair command
-— and leaves the symptom tables **empty on purpose**. Those fill from real
-incidents. Invented rows poison the base.
+Every page opens with a **TL;DR** and a **verified stamp**:
 
-`/gotcha-investigate <symptom>` then runs a fixed loop:
+```markdown
+# Charge
 
-1. classify into a scope, read the matching pages
-2. gather evidence — exact error, logs, state, reproduction
-3. trace the path, noting what is validated, swallowed, retried, logged
-4. state the root cause, then **try to refute it**
-5. report symptom → evidence → root cause → blast radius → fix → repair path
-6. **write every durable finding back**, routed by the manifest, cited by `file:line`
+> **TL;DR** — `ChargeService.execute` owns the attempt state machine. Never add
+> a retry on timeout (D-001).
+>
+> <sub>verified 2026-09-14 @ 3f9c2ab · scope: src/payments/charge/</sub>
+```
 
-Step 6 is the product. Everything else is a good investigation protocol; the
-write-back is what makes the second occurrence cheap. It is a mandatory phase,
-not a suggestion — including for anything learned from a web search, so the next
-investigation does not need that search.
+Troubleshooting is made of **cards**, each one findable by the exact string
+someone will paste:
 
-### Building teaches more than debugging
+```markdown
+### TS-008 · `SignatureVerificationError` burst right after a deploy
+<sub>keywords: SignatureVerificationError, invalid signature, webhook 400 · seen 5 · last 2026-09-14 · verified 2026-09-14 @ 3f9c2ab</sub>
 
-Debugging is the loudest source of knowledge, not the biggest. The partner that
-signals refusal with HTTP 200, the timeout chosen over a retry to avoid a double
-charge, the error you decided to swallow — you learn all of that while building,
-and an investigation report is not there to catch it. Debugging ends in a
-report; building ends in a merge, and what the integration taught you evaporates.
+- **Symptom** — every webhook of one provider fails verification from one deploy on.
+- **Cause** — container clock skew > 300 s (`src/payments/webhook/verify.ts:38`).
+- **Check** — the log line carries the clock delta: > 300 s ⇒ skew.
+- **Fix** — NTP on the hosts. Never rotate the secret before checking skew.
+- **Repair** — providers retry; replay what reached the DLQ.
+```
 
-So drop a marker where you learn it:
+## How the loop runs by itself
+
+Three hooks, no ceremony:
+
+| Hook | Does |
+|---|---|
+| `SessionStart` | injects the index and the read → act → write-back loop (also after `/compact`). No base yet ⇒ offers `/gotcha-init`, once per repo |
+| `PostToolUse` | silently records which code and doc files the turn read or edited |
+| `Stop` | the turn edited code, or had to read 6+ code files, and wrote nothing to `gotchas/` ⇒ sends Claude back **once** to apply the capture contract. Nothing durable ⇒ one line, `gotcha: nothing durable`, done |
+
+The Stop gate is what makes the base self-feeding. Without it, write-back is a
+good intention; with it, every turn that learned something is asked what it
+learned — and a turn that learned nothing costs one line.
+
+Mid-task, there is no need to stop and edit a doc. Drop a marker where you learn
+it, and the write-back harvests and deletes it:
 
 ```ts
 // gotcha: Adyen signals refusal in resultCode, HTTP is 200 either way
 ```
 
-`/gotcha-capture` then harvests the markers, scans the diff for what you did *not*
-note — new swallowed errors, unexplained constants, workarounds shaped "the
-remote does X so we must Y" — routes each finding, and deletes the marker. One
-line where you learn it, no interruption; the routing happens later.
+`manifest.yml` sets the mode: `autocapture: auto` (write, the PR is the review —
+default), `propose` (list findings, write after confirmation) or `off` (only
+explicit `/gotcha-capture`). Thresholds: `nudge_min_edits`, `nudge_min_reads`.
 
-Both paths share one [capture contract](references/capture-contract.md): the same
-durability test, the same routing table, the same writing rules. Duplicating that
-contract per skill would let the two halves drift, which is precisely what
-`/gotcha-lint` exists to catch.
+## Why it stays cheap
 
-`/gotcha-lint` audits the base: citations pointing at moved code, uncited claims,
-duplicated facts, pages that contradict each other, unresolved unknowns, index
-drift, and `gotcha:` markers nobody harvested. Without it the base rots quietly and
-then nobody trusts it.
+A memory that costs more to read than the code it replaces is worthless. The
+whole layout is built for a **flat cost per question**, whatever the size of
+the base:
+
+- **Tiered reading.** L0 index (always in context, capped) → L1 hub or TL;DR
+  (~10 lines) → L2 the one section or card → L3 the code, only when in doubt.
+- **Grep first.** Cards carry literal error strings in their `keywords`, so a
+  pasted error lands on one 15-line card instead of a 300-line page.
+- **Explicit distrust rules.** Read the code when the docs are silent, when you
+  are about to change code on a cited fact, or when `scripts/stale.sh` says the
+  cited file changed since the fact was verified.
+- **Self-organization.** `scripts/stats.sh` measures every page without reading
+  it; `/gotcha-tidy` acts on its flags:
+
+  | When | Then |
+  |---|---|
+  | a theme passes 15 cards | split it by cause into 2–4 sub-themes |
+  | a theme stays under 3 cards for 6 months | merge it into its neighbour |
+  | a card is not seen for 12 months and its code is gone | archive it |
+  | the index passes 60 lines | collapse a section into a hub |
+  | any change to a theme | re-sort cards by how often they resolved a task |
+
+  Themes therefore grow around the problems people actually hit, not around the
+  directory layout. Card ids never change, and cross-references go by id, so
+  reorganizing breaks no link.
+- **Agents as a token budget.** `gotcha-surveyor` (init) and `gotcha-scribe`
+  (large write-backs) read in their own context and return only the result.
+
+## Why there are dates — and only two kinds
+
+Dates as narrative ("added on…", changelogs inside pages) are noise: git already
+holds the story. But two pieces of time metadata earn their place:
+
+1. **`verified <date> @ <sha>`** on every page and card. The sha is the useful
+   half: `scripts/stale.sh` diffs every cited file against it, so the agent knows
+   **without reading any code** whether a fact may have rotted since someone last
+   checked it. The date is for the human glancing at the page.
+2. **`seen N · last <date>`** on troubleshooting cards. That is the
+   self-organization signal: how often a card resolved a real task orders the
+   theme, and cards nobody hits for a year leave the hot path.
+
+## Commands
+
+```
+/gotcha-init          analyse the code, write the base docs (also migrates a 0.1 base)
+/gotcha-recall        cheap lookup protocol — normally triggered on its own
+/gotcha-investigate   bug against the cards first, diagnose, write the card back
+/gotcha-capture       write back what a task taught — normally triggered by the Stop hook
+/gotcha-tidy          split / merge / archive / re-sort / re-index per stats.sh flags
+/gotcha-lint          find rot: stale citations, contradictions, uncited claims, markers
+```
+
+All write paths share one [capture contract](references/capture-contract.md),
+one [page format](references/page-format.md) and one set of
+[organization rules](references/organization.md). Duplicating those per skill
+would let them drift, which is precisely the failure the base exists to prevent.
 
 ## Design rules
 
-- **Every fact cites `file:line`.** No citation, no entry — and no way to lint
-  it later.
+- **Every fact cites `path/to/file.ext:line`.** No citation, no entry — and no
+  way to check it later.
 - **Gaps are marked, never filled with guesses.** `_Unknown — not confirmed in
   code_` is a valid, useful entry.
-- **Deliberate trade-offs are recorded as deliberate**, with the reason.
+- **Deliberate trade-offs are recorded as deliberate**, with what was rejected.
   Otherwise the next person "fixes" them and reintroduces what they solved.
-- **Facts, not narratives.** No ticket numbers, dates, or who did what — git
-  already holds the story. The base holds the reusable part.
-- **Symptom rows need a check column.** Symptom → cause without "how to
-  verify" is a rumour.
+- **Facts, not narratives.** One or two sentences. Git holds the story.
+- **Symptom cards need a check.** Symptom → cause without "how to verify" is a
+  rumour.
+- **The code wins.** When a doc and the code disagree, the doc gets fixed in the
+  same change set.
+- **Every write lands in the working tree**, next to the code change. A human
+  reviews each fact in the PR before it becomes doctrine.
 
 ## Isn't this what auto memory does?
 
-Claude Code writes its own notes now, debugging insights included. That covers a
-different problem. Auto memory is a private notebook; gotcha is a team artifact.
+Auto memory is a private notebook; gotcha is a team artifact.
 
 |  | auto memory | gotcha |
 |---|---|---|
 | Reach | machine-local, not synced | in the repo, cloned by everyone |
 | Review | none | a pull request |
-| Shape | flat prose | routed per scope, entity, standard |
-| Provenance | asserted | `file:line` cited, so it can be lint-checked |
-| Scope | anything | gotchas, trade-offs, repair handles |
-| Reader | the agent | the agent, and the human debugging at 3am |
+| Shape | flat prose | routed by area, theme, entity, decision |
+| Provenance | asserted | `file:line` cited, pinned to a sha, lint-checked |
+| Reader | the agent | the agent, the new hire, and the human debugging at 3am |
 
-The two compose. Let auto memory keep your preferences and this session's
-context; put in gotcha the facts a teammate would need at 3am. The dividing line
-is simple: if losing it would cost someone else an afternoon, it belongs in the
-repo, not in a notebook on your laptop.
+They compose: auto memory keeps your preferences and this session's context;
+gotcha keeps what a teammate would need. If losing it would cost someone else an
+afternoon, it belongs in the repo.
 
 ## Relation to spec-driven tools
 
-Complementary, opposite direction:
-
 |  | Direction | Artifact |
 |---|---|---|
-| Spec-driven (OpenSpec, spec-kit, …) | **prospective** — the spec before the code, the agent executes it | change proposals |
-| gotcha | **retrospective** — the fact after the debug, the agent accumulates it | knowledge base |
+| Spec-driven (OpenSpec, spec-kit, …) | **prospective** — the spec before the code | change proposals |
+| gotcha | **retrospective** — what the code and its incidents taught | project memory |
 
-Run both. One tells the agent what to build, the other what already bit you.
+Run both. One tells the agent what to build, the other what is already there.
+
+## Upgrading from 0.1
+
+Run `/gotcha-init` again. It detects `failure-modes.md`, turns each scope into a
+troubleshooting theme (tables → map, symptom rows → cards), then surveys for the
+new page kinds. The hook moved from `plugin.json` to `hooks/hooks.json`.
 
 ## Prior art
 
-Not a new idea, a packaged one. The write-back loop appears as
-Reflexion (verbal lessons into episodic memory), Voyager (a skill library the
-agent grows on disk), ExpeL (insights extracted from trajectories), MemGPT/Letta
-(self-editing memory blocks), and Generative Agents (reflection over a memory
-stream). Mem0, Letta and Zep ship it as a service.
+Not a new idea, a packaged one: Reflexion (verbal lessons into episodic memory),
+Voyager (a skill library the agent grows on disk), ExpeL (insights extracted from
+trajectories), MemGPT/Letta (self-editing memory blocks), Generative Agents
+(reflection over a memory stream). Mem0, Letta and Zep ship it as a service.
 
-gotcha's bet is different: the store is your repo. Which means a human reviews
-every fact the agent decided to remember, in a PR, before it becomes doctrine.
+gotcha's bet is different: the store is your repo, and a human reviews every
+fact the agent decided to remember, in a PR, before it becomes doctrine.
 
 ## License
 

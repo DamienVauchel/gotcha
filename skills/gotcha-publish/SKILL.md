@@ -1,6 +1,6 @@
 ---
 name: gotcha-publish
-description: Rebuild the human-friendly docs from the project memory — narrative markdown with diagrams, translated to the configured language, written to docs/ by default or published to Confluence, Notion or another document tool. Incremental, only pages whose source changed. Use when the gotcha Stop or session-start hook says the human docs are behind, after /gotcha-init, or when the user asks to publish, regenerate, translate or sync the docs.
+description: Rebuild the human-friendly docs from the project memory — narrative markdown with diagrams, translated to the configured language, written to docs/ by default or published to any mix of channels (PDF, Claude artifact, Claude Docs, Drive, Notion, Confluence, GitHub wiki, …). Incremental, only pages whose source changed. Use when the gotcha Stop or session-start hook says the human docs are behind, after /gotcha-init, or when the user asks to publish, regenerate, translate or sync the docs.
 argument-hint: "[--all to rebuild everything | a source page to rebuild]"
 ---
 
@@ -16,9 +16,11 @@ Authorities — read them, this skill is only the procedure:
 - `${CLAUDE_PLUGIN_ROOT}/references/publishing.md` — targets, page map, ownership, freshness
 - `${CLAUDE_PLUGIN_ROOT}/references/diagrams.md` — when to draw, the house style, copy-paste blocks
 
-Settings come from `gotchas/manifest.yml`: `publish_target`, `publish_language`,
-`publish_dir`, `publish_location`, `publish_when`. Missing ⇒ `docs`, `en`, `docs`.
-`publish_target: none` ⇒ say so and stop.
+Settings come from `gotchas/manifest.yml`: `publish_targets` (a comma-separated
+list of channels), `publish_language`, `publish_dir`, `publish_location_<channel>`,
+`publish_when`. Missing ⇒ `docs`, `en`, `docs`. `publish_targets: none` ⇒ say so
+and stop. Every step below runs **once per channel**, in the order listed, `docs`
+first (the other channels reuse its pages).
 
 ## 1. What changed
 
@@ -32,13 +34,18 @@ sh ${CLAUDE_PLUGIN_ROOT}/scripts/publish-check.sh
   cite it), then rebuild. Never overwrite a hand edit silently.
 - `changed` / `new` / `removed` ⇒ the outputs to rebuild, create or delete.
 - `--all` or no `.publish-state` yet ⇒ every output in the page map.
+- A channel with no `out` row in `.publish-state` (newly added to the manifest)
+  ⇒ every output, for that channel only.
 
 ## 2. Check the target
 
-- `docs` ⇒ nothing to check.
-- Remote (`confluence`, `notion`, `other:<tool>`) ⇒ a matching connector / MCP tool
-  must be available in this session. Not there ⇒ tell the user which connector
-  to add, and publish to `docs` for this run. On a branch other than the default
+- `docs`, `pdf` ⇒ nothing to check (`pdf` needs a markdown-to-PDF tool; none ⇒ say so, skip it).
+- `artifact` ⇒ the Artifact tool. Pages are private until the user shares them.
+- Remote (`claude-docs`, `drive`, `notion`, `confluence`, `github-wiki`,
+  `other:<tool>`) ⇒ a matching connector / MCP tool (or, for the wiki, push access
+  to `<repo>.wiki.git`) must be available in this session. Not there ⇒ tell the
+  user which connector to add, skip that channel for this run, and make sure
+  `docs` was published. On a branch other than the default
   one ⇒ warn that unreviewed facts would go public, and ask.
 
 ## 3. Generate
@@ -78,11 +85,12 @@ Links between generated pages resolve. Pages for removed sources are deleted
 
 ## 5. Record
 
-For each output written:
+For each output written, on each channel (the output name is the file path for
+`docs`/`pdf`, `<channel>:<page name>` for the others):
 
 ```sh
 sh ${CLAUDE_PLUGIN_ROOT}/scripts/publish-check.sh --record <output> <remote-id|-> <source,source>
 ```
 
 Then `publish-check.sh` again must print `fresh`. Report in one line:
-`published: <n> pages → <target> (<language>)`, plus the remote links if any.
+`published: <n> pages → <channels> (<language>)`, plus the remote links if any.

@@ -14,7 +14,7 @@ Read first:
 - `<plugin root>/references/diagrams.md` — when to draw, house style, copy-paste blocks
 
 The prompt gives you: the outputs to write, their source pages, the language,
-the target (`docs` + folder, or a remote tool + location), the plugin root.
+the channel (`docs` + folder, or another channel + location), the plugin root.
 
 ## For each output
 

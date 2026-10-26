@@ -9,16 +9,19 @@ language: en
 
 # Human-friendly docs, generated from gotchas/ by /gotcha-publish
 # (references/publishing.md). Asked once by /gotcha-init.
-#   publish_target:   docs | confluence | notion | other:<tool> | none
+#   publish_targets:  comma-separated channels, any mix of: docs | pdf | artifact |
+#                     claude-docs | drive | notion | confluence | github-wiki |
+#                     other:<tool> | none
 #   publish_language: language of the human docs (en, fr, de, es, …)
 #   publish_dir:      output folder when the target is docs
-#   publish_location: Confluence space + parent page URL, Notion parent page URL, …
-#   publish_when:     on-change (rebuild at the end of any turn that changed
-#                     gotchas/) | manual (/gotcha-publish, e.g. after merge)
-publish_target: docs
+#   publish_location_<channel>: where a remote channel publishes (Confluence space
+#                     + parent page URL, Notion parent page URL, Drive folder, …)
+#   publish_when:     on-change (rebuild the docs/ channel at the end of any turn
+#                     that changed gotchas/) | manual (/gotcha-publish, e.g. after
+#                     merge — always the case for remote channels)
+publish_targets: docs
 publish_language: en
 publish_dir: docs
-publish_location:
 publish_when: on-change
 
 # Write-back behaviour (references/capture-contract.md § Modes):

@@ -25,12 +25,13 @@ printf '%s' "$GOTCHA_INPUT" | grep -q '"stop_hook_active"[[:space:]]*:[[:space:]
 
 # The turn wrote to the base. With on-change publishing, make the human docs follow.
 if grep -q "^edit	base	" "$turn"; then
-  target=$(manifest_get publish_target docs)
+  targets=$(manifest_get publish_targets docs)
   when=$(manifest_get publish_when on-change)
   behind=$(publish_behind)
-  if [ "$when" = on-change ] && [ "${behind:-0}" -gt 0 ]; then
+  # on-change only drives the local docs/ channel; remote channels stay manual.
+  if [ "$when" = on-change ] && [ "${behind:-0}" -gt 0 ] && case ",$targets," in *,docs,*) true ;; *) false ;; esac; then
     rm -f "$turn"
-    block "gotcha publish: this turn changed gotchas/ and $behind source page(s) are now ahead of the human docs ($target). Run the gotcha-publish skill for the changed pages only, then report in one line."
+    block "gotcha publish: this turn changed gotchas/ and $behind source page(s) are now ahead of the human docs. Run the gotcha-publish skill for the changed pages only, then report in one line."
   fi
   finish
 fi

@@ -1,6 +1,6 @@
 ---
 name: gotcha-init
-description: Build this repository's project memory — ask the human-docs language and publication target (docs/ folder by default, or Confluence, Notion, …), analyse the codebase in parallel, write the base in gotchas/ pre-filled with what the code proves, then publish the human-friendly docs with diagrams. Use right after installing gotcha, when the session-start hook says there is no base, when the user asks to set up / initialize / bootstrap gotcha or the project docs, or to migrate a gotcha 0.1 base (failure-modes.md).
+description: Build this repository's project memory — ask the human-docs language and publication channels (multiselect: docs/ folder, PDF, Claude artifact, Claude Docs, Google Drive, Notion, Confluence, GitHub wiki, …), analyse the codebase in parallel, write the base in gotchas/ pre-filled with what the code proves, then publish the human-friendly docs with diagrams. Use right after installing gotcha, when the session-start hook says there is no base, when the user asks to set up / initialize / bootstrap gotcha or the project docs, or to migrate a gotcha 0.1 base (failure-modes.md).
 argument-hint: "[subsystem or directory to scope the base to — defaults to the repo]"
 ---
 
@@ -59,15 +59,24 @@ not one global base. Ask which one if ambiguous.
 ## Phase 2 — Setup questions
 
 Ask everything in **one** round (use the question tool if available, with the
-default first and marked recommended):
+default first and marked recommended; the question tool allows 4 questions per
+call: language, the two channel questions, and the plan):
 
 1. **Language of the human docs** — `en` by default. Propose the language of the
    existing docs or commit messages if it differs.
-2. **Where to publish them** — `docs/ folder in the repo` (default) ·
-   `Confluence` · `Notion` · `another tool` (name it). For a remote target, also
-   ask the location (space / parent page URL) and check that a matching
-   connector is available in this session; if not, say how to add it and keep
-   `docs` until it is.
+2. **Where to publish them — multiselect, any combination.** The question tool
+   caps options at 4, so split the channels over two questions (they count as
+   one round). Default `docs` first, marked recommended; nothing ticked ⇒ `none`.
+   - *In the repo and in Claude:* `docs/ folder` (recommended) · `PDF` (one
+     bundle built from the docs) · `Claude artifact` (private page) · `Claude Docs`
+   - *External tools:* `Confluence` · `Notion` · `Google Drive` · `GitHub wiki`
+   - "Other" ⇒ `other:<tool>` (Outline, GitBook, Coda, …).
+
+   Then, once, for every remote channel chosen (Confluence, Notion, Drive,
+   GitHub wiki, other): ask its location (space / parent page URL, folder, …) and
+   check that a matching connector is available in this session. Missing ⇒ say
+   how to add it and drop that channel for now (keep it in the manifest only if
+   the user insists; `/gotcha-publish` falls back to `docs` for it).
 3. **The plan** — one compact table: areas, scopes → seed themes, entities,
    `autocapture` mode (default `auto`). Confirm or adjust.
 
@@ -91,7 +100,7 @@ run / test / build / deploy (verify each one exists), and the glossary.
 
 | File | From | Fill with |
 |---|---|---|
-| `gotchas/manifest.yml` | `templates/manifest.yml` | Phase 1–2, including the `publish_*` answers (`publish_when: manual` for a remote target). Every path real; `evidence:` commands only if verified |
+| `gotchas/manifest.yml` | `templates/manifest.yml` | Phase 1–2, including the `publish_*` answers (`publish_targets` as a comma-separated list; `publish_location_<channel>` per remote channel; `publish_when: manual` unless `docs` is the only channel). Every path real; `evidence:` commands only if verified |
 | `gotchas/overview.md` | `templates/overview.md` | purpose, stack, map of areas (mermaid if it helps), how to run / test / ship |
 | `gotchas/modules/<area>.md` | `templates/module.md` | surveyor report: role, entry points, flows, invariants, where to change X |
 | `gotchas/conventions.md` | `templates/conventions.md` | only rules that are **not** enforced by a linter and **not** obvious |
@@ -124,7 +133,7 @@ TL;DR last, once the page body exists.
 ## Phase 5 — First publication
 
 Run `/gotcha-publish --all`: the human docs, with their diagrams, in the chosen
-language and place. This is the part most people will actually look at — check
+language and to every chosen channel. This is the part most people will actually look at — check
 the main diagrams render and read well (`references/diagrams.md`).
 
 ## Phase 6 — Wire it up and check

@@ -4,10 +4,9 @@
 subject: src/payments
 
 language: en
-publish_target: docs
+publish_targets: docs
 publish_language: en
 publish_dir: docs
-publish_location:
 publish_when: on-change
 autocapture: auto
 nudge_min_edits: 1

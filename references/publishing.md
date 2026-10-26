@@ -15,7 +15,7 @@ flowchart LR
   task(["🤖 every task"]):::actor -->|write-back| src[("<b>gotchas/</b><br/><small>source · for the agent</small>")]:::store
   src -->|/gotcha-publish| pub("<b>gotcha-publisher</b><br/><small>translate · narrate · draw</small>"):::service
   pub --> docs[("<b>docs/</b><br/><small>default</small>")]:::store
-  pub -.-> remote["🌐 Confluence · Notion · …"]:::external
+  pub -.-> remote["🌐 PDF · Drive · Notion · Confluence · …"]:::external
   src -.->|hash per page| state[(".publish-state")]:::store
   state -.->|what changed| pub
 ```
@@ -29,11 +29,15 @@ In `gotchas/manifest.yml`, asked once by `/gotcha-init`:
 
 | Key | Values | Default |
 |---|---|---|
-| `publish_target` | `docs` · `confluence` · `notion` · `other:<tool>` · `none` | `docs` |
+| `publish_targets` | comma-separated, any mix of `docs` · `pdf` · `artifact` · `claude-docs` · `drive` · `notion` · `confluence` · `github-wiki` · `other:<tool>` — or `none` | `docs` |
 | `publish_language` | any language code — the human docs are written in it | `en` |
-| `publish_dir` | output folder for `docs` | `docs` |
-| `publish_location` | Confluence space + parent page URL, Notion parent page URL, … | — |
+| `publish_dir` | output folder for `docs` and `pdf` | `docs` |
+| `publish_location_<channel>` | per remote channel: Confluence space + parent page URL, Notion parent page URL, Drive folder, … | — |
 | `publish_when` | `on-change` · `manual` | `on-change` for `docs`, `manual` otherwise |
+
+`/gotcha-init` asks the channels as a multiselect. Channels are independent:
+each has its own rows in `.publish-state`, so adding one later publishes
+everything to it without touching the others.
 
 The source base stays in the manifest's `language:` (English by default: it is
 grepped against code and log strings). The human docs are translated at
@@ -102,8 +106,9 @@ After writing each output: `publish-check.sh --record <output> <remote-id|-> <so
 `.publish-state` is committed, so the next person and the next session know what
 is already published, and which remote page to update.
 
-With `publish_when: on-change` and the `docs` target, the Stop hook asks for a
-publish at the end of any turn that changed the source. With `manual`, the
+With `publish_when: on-change` and `docs` among the targets, the Stop hook asks for a
+publish of the `docs` channel at the end of any turn that changed the source;
+remote channels are published with `/gotcha-publish`, after merge. With `manual`, the
 session-start hook mentions how many pages are behind.
 
 ## Targets
@@ -115,16 +120,47 @@ the same PR as the source. Renders on GitHub / GitLab as-is, diagrams included.
 Works with MkDocs (`pymdownx.superfences` mermaid) or Docusaurus
 (`@docusaurus/theme-mermaid`) if the team wants a site.
 
+### `pdf`
+
+One bundle, `<publish_dir>/pdf/<project>.pdf`, built from the generated `docs`
+pages (home first, then the page map order) with whatever markdown-to-PDF tool
+is installed (pandoc, mdbook, a headless browser). Diagrams are rendered SVGs
+(`render-diagrams.sh --out`). Needs `docs` in the targets; rebuilt whenever any
+`docs` page is. Gitignore it unless the team wants it committed.
+
+### `artifact`
+
+One private Artifact page per output (or one multi-section page for a small
+base), built with the Artifact tool; Mermaid via the page's own script. The
+artifact URL is the remote id. Private until the user shares it.
+
+### `claude-docs`
+
+One Claude Docs doc per output through the Claude Docs connector; diagrams as
+chart/diagram blocks if the doc supports them, else Mermaid code blocks. Doc id
+is the remote id.
+
+### `drive`
+
+Google Docs in the `publish_location_drive` folder, via the Google Drive
+connector; diagrams as rendered PNG/SVG images. File id is the remote id.
+
+### `github-wiki`
+
+Markdown pages pushed to `<repo>.wiki.git` (GitHub renders Mermaid). Page
+names mirror the page map. Pushing is outward-facing: only from the default
+branch, after merge.
+
 ### `notion`
 
 Needs a Notion connector / MCP server in the session. One Notion page per output,
-under `publish_location`, same hierarchy. Mermaid goes in `mermaid` code blocks,
+under `publish_location_notion`, same hierarchy. Mermaid goes in `mermaid` code blocks,
 which Notion renders. Remote page ids go in `.publish-state`.
 
 ### `confluence`
 
 Needs an Atlassian / Confluence connector / MCP server. One page per output
-under `publish_location`. Confluence does not render Mermaid natively: render
+under `publish_location_confluence`. Confluence does not render Mermaid natively: render
 SVGs with `scripts/render-diagrams.sh --out <dir>` and attach them when the tool
 can upload attachments; otherwise use a `mermaid` code block if the instance has
 a Mermaid macro installed, and say which one was used. GitHub alerts become
@@ -143,5 +179,5 @@ else as rendered SVG / PNG.
   feature branch puts unreviewed facts in front of the whole company. On another
   branch, warn and ask.
 - Update pages in place; never delete a remote page without asking.
-- No connector available ⇒ say so, explain how to add it, and fall back to `docs`
-  for this run.
+- No connector available ⇒ say so, explain how to add it, skip that channel for
+  this run and make sure `docs` is published.

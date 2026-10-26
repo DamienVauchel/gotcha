@@ -37,6 +37,6 @@ state_dir() {
 # publish_behind — number of source pages changed since the human docs were
 # last published; empty when publishing is off.
 publish_behind() {
-  [ "$(manifest_get publish_target docs)" = none ] && return 0
+  [ "$(manifest_get publish_targets docs)" = none ] && return 0
   (cd "$GOTCHA_PROJECT" && sh "$GOTCHA_ROOT/scripts/publish-check.sh" --count 2>/dev/null) || true
 }

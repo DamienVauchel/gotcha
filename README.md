@@ -79,8 +79,9 @@ it yourself:
 ```
 
 It asks two things — **the language of the human docs** (English by default) and
-**where to publish them** (a `docs/` folder by default, or Confluence, Notion or
-another tool you have a connector for) — then surveys the code, one parallel
+**where to publish them**, as a multiselect (a `docs/` folder by default; also
+PDF, a Claude artifact, Claude Docs, Google Drive, Notion, Confluence, a GitHub
+wiki or another tool you have a connector for) — then surveys the code, one parallel
 agent per area so the reading stays out of your context. It writes the memory,
 every fact cited `file:line`, every gap marked rather than guessed, and publishes
 the human docs from it. From then on both grow by themselves.
@@ -159,7 +160,7 @@ The human docs stay up to date without anyone writing them twice:
   a publish at the end of any turn that changed the memory.
 - **Hand edits are caught, not lost.** A correction made directly in `docs/` is
   detected, ported into `gotchas/`, then republished.
-- **Remote targets** (Confluence, Notion, any document tool with a connector)
+- **Remote channels** (Drive, Notion, Confluence, GitHub wiki, any document tool with a connector)
   publish from the default branch after merge, so unreviewed facts never go
   public. Pages are updated in place; remote ids live in `gotchas/.publish-state`.
 
@@ -234,11 +235,11 @@ holds the story. But two pieces of time metadata earn their place:
 ## Commands
 
 ```
-/gotcha-init          ask language + target, analyse the code, write the memory, publish the docs
+/gotcha-init          ask language + publication channels, analyse the code, write the memory, publish the docs
 /gotcha-recall        cheap lookup protocol — normally triggered on its own
 /gotcha-investigate   bug against the cards first, diagnose, write the card back
 /gotcha-capture       write back what a task taught — normally triggered by the Stop hook
-/gotcha-publish       rebuild the human docs that are behind — docs/, Confluence, Notion, …
+/gotcha-publish       rebuild the human docs that are behind — docs/, PDF, Drive, Notion, Confluence, …
 /gotcha-tidy          split / merge / archive / re-sort / re-index per stats.sh flags
 /gotcha-lint          find rot: stale citations, contradictions, uncited claims, markers
 ```

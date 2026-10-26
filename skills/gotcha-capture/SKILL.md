@@ -91,8 +91,9 @@ Run `scripts/stats.sh`. If a page you touched is flagged `SPLIT`, `INDEX>60`,
 
 ## Phase 6 — Keep the human docs in step
 
-`manifest.yml` `publish_when: on-change` (the default for the `docs` target) ⇒
-run `/gotcha-publish` for the pages you changed. `manual` ⇒ skip; the
+`manifest.yml` `publish_when: on-change` (the default when `docs` is a channel; remote
+channels are always manual) ⇒ run `/gotcha-publish` for the pages you changed,
+`docs` channel only. `manual` ⇒ skip; the
 session-start hook will mention the pages behind.
 
 Report in one line: `gotcha: <n> facts → <pages>` (plus markers removed, plus

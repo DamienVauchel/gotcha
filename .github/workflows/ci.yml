@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shell:
+    name: shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax
+        run: for f in hooks/*.sh scripts/*.sh tests/*.sh; do sh -n "$f"; done
+      - name: ShellCheck
+        run: shellcheck --shell=sh --severity=warning hooks/*.sh scripts/*.sh tests/*.sh
+
+  json:
+    name: json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Valid JSON
+        run: |
+          for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json; do
+            jq empty "$f" && echo "ok $f"
+          done
+
+  hooks:
+    name: hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test
+        run: sh tests/hooks.sh
+
+  example:
+    name: example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Published docs match the memory
+        working-directory: examples/payments-gateway
+        run: |
+          out=$(sh ../../scripts/publish-check.sh)
+          echo "$out"
+          [ "$out" = fresh ]
+      - name: No organization flag on the example
+        working-directory: examples/payments-gateway
+        run: |
+          out=$(sh ../../scripts/stats.sh gotchas)
+          echo "$out"
+          ! printf '%s\n' "$out" | grep -E 'INDEX>|SPLIT|MERGE\?|COLD|NO_TLDR|UNINDEXED'
+
+  diagrams:
+    name: diagrams
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Render every Mermaid block
+        run: |
+          files=$(grep -rl '^```mermaid' --include='*.md' . | grep -v node_modules | sort)
+          sh scripts/render-diagrams.sh $files
+
+  links:
+    name: links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check local links (wiki pages resolve without extension)
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress --fallback-extensions md --exclude-path node_modules './**/*.md'
+          fail: true

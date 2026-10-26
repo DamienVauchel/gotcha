@@ -5,8 +5,7 @@ From zero to a project memory and published docs in one command.
 ## 1. Install
 
 ```
-/plugin marketplace add DamienVauchel/gotcha
-/plugin install gotcha
+/plugin install gotcha --marketplace DamienVauchel/gotcha
 ```
 
 On the next session in a repository with no base, gotcha offers to build one (once per repository). Or run it yourself:

@@ -10,9 +10,16 @@ hooks/            hooks.json + session-start.sh · track.sh · stop.sh · lib.sh
 references/       the shared contracts: page-format · capture-contract · organization · publishing · diagrams
 templates/        the page skeletons init copies from
 scripts/          stats.sh · stale.sh · publish-check.sh · render-diagrams.sh
+tests/            hooks.sh (smoke test) · docs.sh (docs drift check)
+assets/           icon.svg, the source of .claude-plugin/icon.png
+.github/          the CI workflow
 examples/         payments-gateway — both layers, filled in
 wiki/             the sources of this wiki
 ```
+
+## README and wiki are living docs
+
+They describe what the plugin ships, so they change in the **same PR** as the code. `tests/docs.sh` (a CI check) fails when a skill, agent, hook, script, channel or manifest key is missing from them, or when the versions disagree. The mapping of "what you change → what you update" is in [`CLAUDE.md`](https://github.com/DamienVauchel/gotcha/blob/main/.claude/CLAUDE.md).
 
 ## One authority per rule
 
@@ -29,7 +36,10 @@ The skills are **procedures**; the rules live in `references/`. Duplicating a ru
 ## Checks before a PR
 
 ```sh
-sh -n hooks/*.sh scripts/*.sh                              # syntax
+claude plugin validate .                                 # manifests
+sh tests/hooks.sh                                          # hooks smoke test
+sh tests/docs.sh                                           # README and wiki match the plugin
+sh -n hooks/*.sh scripts/*.sh tests/*.sh                   # syntax
 cd examples/payments-gateway
 sh ../../scripts/stats.sh gotchas                          # no unexpected flags
 sh ../../scripts/publish-check.sh                          # fresh

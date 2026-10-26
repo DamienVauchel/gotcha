@@ -30,6 +30,27 @@ jobs:
             jq empty "$f" && echo "ok $f"
           done
 
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+      - name: Validate the plugin and marketplace manifests
+        run: claude plugin validate .
+
+  docs-sync:
+    name: docs-sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: README and wiki match the plugin
+        run: sh tests/docs.sh
+
   hooks:
     name: hooks
     runs-on: ubuntu-latest

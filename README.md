@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🧠 gotcha
+<img src=".claude-plugin/icon.png" alt="gotcha" width="96" height="96"/>
+
+# gotcha
 
 **The project memory your codebase earned.**<br/>
 Written by the agent · reviewed in PR · published as docs people actually read.
@@ -80,8 +82,7 @@ change. **No server, no embeddings, no vector store.**
 ## Install
 
 ```
-/plugin marketplace add DamienVauchel/gotcha
-/plugin install gotcha
+/plugin install gotcha --marketplace DamienVauchel/gotcha
 /gotcha-init
 ```
 

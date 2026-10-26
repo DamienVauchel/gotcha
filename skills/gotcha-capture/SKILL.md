@@ -1,92 +1,109 @@
 ---
 name: gotcha-capture
-description: Harvest what a piece of work taught you into the gotcha knowledge base — collects `gotcha:` markers left in the code, scans the change set for durable findings, routes each one per the capture contract, and deletes the harvested markers. Use at the end of a feature, an integration, or any task that touched an external system; also when the user asks to capture, harvest, or write findings to the knowledge base.
-argument-hint: "[branch, path or diff range to harvest from — defaults to the uncommitted change set]"
+description: Write back into the project memory (gotchas/) what a task taught you that the docs did not hold — answers you had to dig for in the code, docs found wrong, conventions, trade-offs, external quirks, new entities, `gotcha:` markers left in the code. Routes each finding per the capture contract, stamps it, and keeps the base within its size caps. Use at the end of any task that changed code or required exploring it, when the gotcha Stop hook asks for a write-back, or when the user asks to capture, harvest, document, or update the docs.
+argument-hint: "[branch, path or diff range to harvest from — defaults to this task and the uncommitted change set]"
 ---
 
 # gotcha-capture
 
-Feature work is the richest source of knowledge in the system and the one that
-loses it. Debugging at least ends in a report; building ends in a merge, and what
-the integration taught you evaporates.
+The write-back half of the loop. It runs after most tasks, so it must be **fast
+when there is nothing to write** and **precise when there is**.
 
-Read `gotchas/manifest.yml` for routing and
-`${CLAUDE_PLUGIN_ROOT}/references/capture-contract.md` for the durability test,
-the per-trigger filters and the writing rules. Apply that contract — it is the
-authority, this skill is only the procedure.
+The authority is `${CLAUDE_PLUGIN_ROOT}/references/capture-contract.md`
+(durability test, triggers, routing, writing rules, modes). Page shapes are in
+`page-format.md`. This skill is only the procedure.
 
-No manifest ⇒ run `/gotcha-init` first.
+No `gotchas/manifest.yml` ⇒ suggest `/gotcha-init` and stop.
 
-## Phase 1 — Harvest the markers
+## Phase 1 — Collect candidates
 
-Search the change set (or the whole subject if no diff is given) for `gotcha:`
-markers in any comment syntax:
+From three sources, cheapest first:
 
-```
-grep -rn "gotcha:" <subject> --include=* | grep -v "^.*gotchas/"
-```
-
-Each marker is a **pending** capture. For each one: read the surrounding code so
-the fact gets a real `file:line` citation rather than a paraphrase of the note.
-
-## Phase 2 — Scan the change set
-
-Markers catch what you remembered to note. This catches what you did not.
-
-Review the diff for the shapes the contract lists under "From feature work". In
-practice, look for:
-
-- a new `catch` that logs and continues, a new early `return` that drops work, a
-  new default that hides an absent value — every one is a future silent failure
-- a value chosen for a non-obvious reason: a timeout, a batch size, a tolerance,
-  a retry count. Why *that* number?
-- a new external integration, endpoint, or provider — its quirks belong on an
-  entity page now
-- a workaround: anything shaped "the remote side does X so we have to Y"
-- an alternative you considered and rejected. If the diff looks like it argued
-  with itself, the argument is the knowledge
+1. **This task.** What you just did: what the base lacked (you had to read the
+   code for it), what it got wrong, which card answered, what trade-off you
+   made, what the external system did that surprised you.
+2. **`gotcha:` markers** in the change set (or the subject if a range is given):
+   `git grep -n "gotcha:" -- . ':(exclude)gotchas'`. Read around each marker so
+   the fact gets a real `file:line`, not a paraphrase of the note.
+3. **The diff** (`git diff`, or the given range), for what nobody noted: a new
+   `catch` that logs and continues, a new early `return` that drops work, a
+   constant chosen for a non-obvious reason (why *that* timeout?), a new
+   integration, a workaround shaped "the remote does X so we must Y", an
+   alternative visibly considered and rejected.
 
 Do not invent. A finding you cannot cite or verify is not captured — at most it
 becomes `_Unknown — not confirmed in code_` on the relevant page.
 
-## Phase 3 — Filter
+## Phase 2 — Filter
 
-Run every candidate through the three-part durability test in the contract. Be
-ruthless: most of a feature diff is code being readable, which is the opposite of
-something worth remembering.
+Run every candidate through the durability test. Be ruthless: most of what a
+task touches is code being readable.
 
-Discarding a candidate is the normal outcome. A capture run that writes nothing
-is a valid run — say so and stop.
+**Discarding everything is the normal outcome of a small task.** If nothing
+passes, reply `gotcha: nothing durable` and stop — no table, no explanation.
 
-## Phase 4 — Propose
+## Phase 3 — Route and dedupe
 
-Show the user, before writing anything:
+For each survivor, pick the destination from the routing table. Before writing,
+check it is not already there:
 
-| Finding | Destination | Source |
-|---|---|---|
-| one line | page per the routing table | marker at `file:line`, or diff |
+```sh
+grep -rniF -e "<key term>" gotchas/
+```
 
-Plus the markers you will delete, and the candidates you discarded with a
-one-word reason. The discard list matters: it is how the user catches a filter
-that is too aggressive.
+- Already present and right ⇒ nothing to write (a card ⇒ bump `seen` / `last`).
+- Present and wrong or stale ⇒ **fix in place**, cite the proof, re-stamp.
+- Absent ⇒ add it.
 
-Get confirmation.
+## Phase 4 — Write (or propose)
 
-## Phase 5 — Write
+Mode is `manifest.yml` `autocapture:` — `auto` unless set.
 
-1. Apply each finding to its page per the contract's writing rules.
-2. Delete every harvested marker from the code.
-3. Update `gotchas/INDEX.md` if a page was added.
-4. Report the pages touched and the markers removed.
+- **`propose`** — show one table first, then write what the user accepts:
 
-Everything lands in the **current change set**, so a human reviews each fact in
-the PR before it becomes doctrine. That review is the point — never write to the
-base outside a change the user is about to look at.
+  | Finding | Destination | Source |
+  |---|---|---|
+  | one line | page § section, or new card | marker at `file:line`, diff, or this task |
+
+  Plus the discarded candidates with a one-word reason — how the user catches a
+  filter that is too aggressive.
+- **`auto`** — write directly. The PR is the review.
+
+Writing:
+
+1. Read only the target section (`grep -n "^## \|^### "` for offsets), not the
+   whole page.
+2. Apply the writing rules. New card ids come from
+   `sh ${CLAUDE_PLUGIN_ROOT}/scripts/stats.sh gotchas` (`next ids:`).
+   Stamp `verified <today> @ $(git rev-parse --short HEAD)`.
+3. Delete every harvested marker from the code.
+4. A new page ⇒ its line in `INDEX.md` or its hub.
+
+**Many findings, or target pages not yet in context** (≥ 3 destinations) ⇒
+delegate the writing to the `gotcha-scribe` agent with the list of findings
+(fact, citation, destination). It reads the pages in its own context and returns
+one line per write; yours stays clean.
+
+## Phase 5 — Keep it organized
+
+Run `scripts/stats.sh`. If a page you touched is flagged `SPLIT`, `INDEX>60`,
+`NO_TLDR` or `UNINDEXED`, apply `/gotcha-tidy` to that page only.
+
+## Phase 6 — Keep the human docs in step
+
+`manifest.yml` `publish_when: on-change` (the default when `docs` is a channel; remote
+channels are always manual) ⇒ run `/gotcha-publish` for the pages you changed,
+`docs` channel only. `manual` ⇒ skip; the
+session-start hook will mention the pages behind.
+
+Report in one line: `gotcha: <n> facts → <pages>` (plus markers removed, plus
+`published: <n> pages` if any).
 
 ## Rules
 
-- Never fabricate a citation. If the fact came from a partner conversation or a
-  web page, cite that instead.
-- Never delete a marker without either writing its fact or confirming the fact is
+- Never fabricate a citation. If the fact came from a conversation or a web
+  page, cite that instead.
+- Never delete a marker without either writing its fact or confirming it is
   already in the base.
-- Do not restructure existing pages. Add to them.
+- Never write the base outside the current change set: the review in PR is what
+  turns an agent's note into team doctrine.

@@ -1,8 +1,12 @@
 # <Entity name>
 
-> One file per entity (partner, provider, tenant, plugin). Every statement must
-> be backed by code — cite `file:line`. Mark gaps
-> `_Unknown — not confirmed in code_` rather than guessing.
+> **TL;DR** — what makes this one different from its siblings: the quirk that
+> bites first.
+>
+> <sub>verified <YYYY-MM-DD> @ <sha></sub>
+
+One file per entity (partner, provider, tenant, plugin). Every statement cites
+`path/to/file.ext:line`; gaps are `_Unknown — not confirmed in code_`.
 
 ## Identity
 
@@ -14,8 +18,7 @@
 
 ## Authentication
 
-How this codebase authenticates against it: scheme, the class that builds the
-credentials, the env/config keys involved.
+Scheme, the class that builds the credentials, the env / config keys involved.
 
 ## Interface
 
@@ -32,13 +35,8 @@ credentials, the env/config keys involved.
 
 Config keys, env vars, per-tenant settings, fixtures. Cite each source.
 
-## Implementation map
-
-The classes specific to this entity, with paths.
-
 ## Known quirks
 
-The reason this page exists. Behaviours that are true of this entity and not of
-its siblings: undocumented remote responses, error codes that mean something
-else, ordering constraints, silent truncation, fields that lie. Cite the code
-that proves each one, or the source that confirmed it.
+The reason this page exists. What is true of this entity and not of its
+siblings: undocumented responses, error codes that mean something else, ordering
+constraints, silent truncation, fields that lie. Cite the code or the source.

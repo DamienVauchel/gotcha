@@ -1,23 +1,18 @@
 {
   "name": "gotcha",
-  "description": "Git-native knowledge base for coding agents. Investigate a bug against local knowledge first, then write what you learned back into versioned markdown reviewed in PR.",
-  "version": "0.1.0",
+  "description": "A self-maintaining project memory for coding agents. Analyses the code on install, reads the memory before every task, writes back what each task taught, keeps troubleshooting organized by theme, and publishes human-friendly docs with draw.io-style diagrams to docs/, PDF, Drive, Notion, Confluence and more.",
+  "version": "0.3.0",
   "author": {
     "name": "Damien Vauchel",
     "url": "https://github.com/DamienVauchel"
   },
-  "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/inject-index.sh\"",
-            "timeout": 5,
-            "statusMessage": "Loading gotcha index..."
-          }
-        ]
-      }
-    ]
-  }
+  "repository": "https://github.com/DamienVauchel/gotcha",
+  "license": "MIT",
+  "keywords": [
+    "memory",
+    "documentation",
+    "knowledge-base",
+    "troubleshooting",
+    "onboarding"
+  ]
 }

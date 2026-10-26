@@ -7,6 +7,7 @@
 #   unpinned  no verified sha above the citation, so freshness is unknown
 # Run from the repo root. No argument ⇒ every page under gotchas/.
 set -eu
+# shellcheck disable=SC2046 # word splitting is intended; gotchas/ paths have no spaces
 [ "$#" -gt 0 ] || set -- $(find gotchas -name '*.md' ! -name '_*' | sort)
 
 for page in "$@"; do

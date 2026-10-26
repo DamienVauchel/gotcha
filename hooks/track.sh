@@ -5,7 +5,7 @@
 . "$(dirname "$0")/lib.sh"
 [ -f "$GOTCHA_BASE/INDEX.md" ] || exit 0
 
-GOTCHA_INPUT=$(cat)
+GOTCHA_INPUT=$(cat) # shellcheck disable=SC2034 # read by json_get in lib.sh
 tool=$(json_get tool_name)
 path=$(json_get file_path)
 [ -n "$path" ] || path=$(json_get notebook_path)
@@ -18,7 +18,7 @@ case "$path" in
 esac
 
 case "$tool" in
-  Read) op=read ;;
+  Read) op='read' ;;
   *) op=edit ;;
 esac
 

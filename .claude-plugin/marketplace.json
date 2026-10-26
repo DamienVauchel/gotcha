@@ -9,7 +9,7 @@
   "plugins": [
     {
       "name": "gotcha",
-      "description": "Reads the project memory before every task, writes back what the task taught, and publishes human docs with diagrams to docs/, Confluence or Notion.",
+      "description": "Reads the project memory before every task, writes back what the task taught, and publishes human docs with diagrams to docs/, PDF, Drive, Notion, Confluence and more.",
       "source": "./",
       "category": "productivity",
       "version": "0.3.0"

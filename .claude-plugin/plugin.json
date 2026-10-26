@@ -1,6 +1,6 @@
 {
   "name": "gotcha",
-  "description": "A self-maintaining project memory for coding agents. Analyses the code on install, reads the memory before every task, writes back what each task taught, keeps troubleshooting organized by theme, and publishes human-friendly docs with draw.io-style diagrams to docs/, Confluence or Notion.",
+  "description": "A self-maintaining project memory for coding agents. Analyses the code on install, reads the memory before every task, writes back what each task taught, keeps troubleshooting organized by theme, and publishes human-friendly docs with draw.io-style diagrams to docs/, PDF, Drive, Notion, Confluence and more.",
   "version": "0.3.0",
   "author": {
     "name": "Damien Vauchel",
